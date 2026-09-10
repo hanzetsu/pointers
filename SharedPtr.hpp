@@ -45,5 +45,20 @@ public:
 
     void reset(T *p = nullptr)
     {
+        if (ptr != p)
+        {
+            if (--(*ref_count) == 0)
+            {
+                delete ptr;
+                delete ref_count;
+            }
+            ptr = p;
+            if (p != nullptr)
+            {
+                ref_count = new int(1);
+            }
+            else
+                ref_count = nullptr;
+        }
     }
 };
