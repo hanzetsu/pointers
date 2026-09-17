@@ -1,5 +1,6 @@
 #include <cstddef>
-#include "Exceptions.hpp"  
+#include <type_traits>
+#include "Exceptions.hpp"
 
 template <typename T>
 class UniquePtr
@@ -7,7 +8,9 @@ class UniquePtr
 private:
     T *ptr;
 
-    void release() noexcept
+    template <typename U> friend class UniquePtr;
+
+    void destroy() noexcept
     {
         delete ptr;
         ptr = nullptr;
@@ -16,7 +19,7 @@ private:
 public:
     UniquePtr(T *p = nullptr) noexcept : ptr(p) {}
 
-    ~UniquePtr() { release(); }
+    ~UniquePtr() { destroy(); }
 
     UniquePtr(const UniquePtr &) = delete;
     UniquePtr &operator=(const UniquePtr &) = delete;
@@ -30,7 +33,25 @@ public:
     {
         if (this != &other)
         {
-            release();
+            destroy();
+            ptr = other.ptr;
+            other.ptr = nullptr;
+        }
+        return *this;
+    }
+
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+    UniquePtr(UniquePtr<U> &&other) noexcept : ptr(other.ptr)
+    {
+        other.ptr = nullptr;
+    }
+
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+    UniquePtr &operator=(UniquePtr<U> &&other) noexcept
+    {
+        if (ptr != other.ptr)
+        {
+            destroy();
             ptr = other.ptr;
             other.ptr = nullptr;
         }
@@ -52,7 +73,7 @@ public:
     {
         if (ptr != p)
         {
-            release();
+            destroy();
             ptr = p;
         }
     }
@@ -66,7 +87,7 @@ class UniquePtrArr
 private:
     T *ptr;
 
-    void release() noexcept
+    void destroy() noexcept
     {
         delete[] ptr;
         ptr = nullptr;
@@ -75,7 +96,7 @@ private:
 public:
     UniquePtrArr(T *p = nullptr) noexcept : ptr(p) {}
 
-    ~UniquePtrArr() { release(); }
+    ~UniquePtrArr() { destroy(); }
 
     UniquePtrArr(const UniquePtrArr &) = delete;
     UniquePtrArr &operator=(const UniquePtrArr &) = delete;
@@ -89,7 +110,7 @@ public:
     {
         if (this != &other)
         {
-            release();
+            destroy();
             ptr = other.ptr;
             other.ptr = nullptr;
         }
@@ -112,7 +133,7 @@ public:
     {
         if (ptr != p)
         {
-            release();
+            destroy();
             ptr = p;
         }
     }

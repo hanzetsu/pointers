@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <type_traits>
 #include "Exceptions.hpp"
 
 template <typename T>
@@ -7,6 +8,9 @@ class SharedPtr
 private:
     T *ptr;
     size_t *ref_count;
+
+    template <typename U>
+    friend class SharedPtr;
 
     void release() noexcept
     {
@@ -40,6 +44,22 @@ public:
         other.ref_count = nullptr;
     }
 
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
+    SharedPtr(const SharedPtr<U> &other)
+        : ptr(other.ptr), ref_count(other.ref_count)
+    {
+        if (ref_count != nullptr)
+            ++(*ref_count);
+    }
+
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
+    SharedPtr(SharedPtr<U> &&other) noexcept
+        : ptr(other.ptr), ref_count(other.ref_count)
+    {
+        other.ptr = nullptr;
+        other.ref_count = nullptr;
+    }
+
     SharedPtr &operator=(const SharedPtr &other)
     {
         if (this != &other)
@@ -56,6 +76,34 @@ public:
     SharedPtr &operator=(SharedPtr &&other) noexcept
     {
         if (this != &other)
+        {
+            release();
+            ptr = other.ptr;
+            ref_count = other.ref_count;
+            other.ptr = nullptr;
+            other.ref_count = nullptr;
+        }
+        return *this;
+    }
+
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
+    SharedPtr &operator=(const SharedPtr<U> &other)
+    {
+        if (ptr != other.ptr)
+        {
+            release();
+            ptr = other.ptr;
+            ref_count = other.ref_count;
+            if (ref_count != nullptr)
+                ++(*ref_count);
+        }
+        return *this;
+    }
+
+    template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
+    SharedPtr &operator=(SharedPtr<U> &&other) noexcept
+    {
+        if (ptr != other.ptr)
         {
             release();
             ptr = other.ptr;
@@ -173,14 +221,14 @@ public:
     T &operator[](size_t index)
     {
         if (ptr == nullptr || index >= size)
-            throw IndexOutOfRange("SharedPtrArr::operator[]: индекс вне диапазона");
+            throw IndexOutOfRange(index, size, "SharedPtrArr::operator[]: индекс вне диапазона");
         return ptr[index];
     }
 
     const T &operator[](size_t index) const
     {
         if (ptr == nullptr || index >= size)
-            throw IndexOutOfRange("SharedPtrArr::operator[]: индекс вне диапазона");
+            throw IndexOutOfRange(index, size, "SharedPtrArr::operator[]: индекс вне диапазона");
         return ptr[index];
     }
 
