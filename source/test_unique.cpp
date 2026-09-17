@@ -80,10 +80,14 @@ int main()
     size_t failed = 0;
     auto run = [&failed](bool (*test)(), const char *name)
     {
-        if (test())
-            std::cout << "[Пройдено] " << name << "\n";
-        else
+        try
         {
+            test();
+            std::cout << "[Пройдено] " << name << "\n";
+        }
+        catch (const TestFailure &e)
+        {
+            std::cerr << e.msg << "\n";
             std::cout << "[Провалено] " << name << "\n";
             ++failed;
         }
@@ -102,3 +106,5 @@ int main()
     std::cout << "\nПровалено тестов: " << failed << "\n";
     return 1;
 }
+
+//g++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude source/test_unique.cpp -o build/test_unique_san

@@ -120,10 +120,14 @@ int main()
     size_t failed = 0;
     auto run = [&failed](bool (*test)(), const char *name)
     {
-        if (test())
-            std::cout << "[Пройдено] " << name << "\n";
-        else
+        try
         {
+            test();
+            std::cout << "[Пройдено] " << name << "\n";
+        }
+        catch (const TestFailure &e)
+        {
+            std::cerr << e.msg << "\n";
             std::cout << "[Провалено] " << name << "\n";
             ++failed;
         }

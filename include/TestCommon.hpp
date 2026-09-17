@@ -17,14 +17,16 @@ struct Tracked
     ~Tracked() { --alive; }
 };
 
-inline bool CHECK(bool cond, std::string msg,
+struct TestFailure { std::string msg; };
+
+inline void CHECK(bool cond, std::string msg,
                   const char *file = __builtin_FILE(),
                   int line = __builtin_LINE())
 {
     if (!cond)
     {
-        std::cerr << "Провал: " << msg << " (" << file << ":" << line << ")\n";
-        return false;
+        std::ostringstream oss;
+        oss << "Провал: " << msg << " (" << file << ":" << line << ")";
+        throw TestFailure{oss.str()};
     }
-    return true;
 }
