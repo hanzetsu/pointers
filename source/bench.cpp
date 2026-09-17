@@ -30,9 +30,6 @@ void* operator new[](size_t size) {
 void operator delete(void* p) noexcept { std::free(p); }
 void operator delete[](void* p) noexcept { std::free(p); }
 
-// ============================================================
-// Вспомогательное
-// ============================================================
 struct Payload {
     int a = 1;
     double b = 2.0;
@@ -142,7 +139,7 @@ int main() {
         bench_single(N);
     }
 
-    for (size_t N : {1000UL, 10000UL, 100000UL, 1000000UL}) {
+    for (size_t N : {10000UL, 100000UL, 1000000UL}) {
         bench_array(N);
     }
 
