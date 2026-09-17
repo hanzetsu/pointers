@@ -9,9 +9,6 @@
 #include "UniquePtr.hpp"
 #include "SharedPtr.hpp"
 
-// ============================================================
-// Подсчёт памяти: переопределяем operator new / delete
-// ============================================================
 static size_t g_bytes{0};
 static bool g_track = false;
 
