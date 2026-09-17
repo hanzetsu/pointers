@@ -251,8 +251,3 @@ int main()
 }
 //g++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude source/tests.cpp -o build/tests_san
 // valgrind --leak-check=full ./tests
-//-g отладочная информация, -01 оптимизация, -fno-omit-frame-pointer заставляет компилятор сохранять frame pointer. 
-// stack frame область, где хранятся локальные переменные, аргументы, адрес возврата.
-// frame pointer - указатель на начало этой области 
-//Когда он есть, по стеку можно «пройтись» цепочкой: каждый кадр хранит указатель на предыдущий. 
-//Это позволяет быстро и надёжно получать стек вызовов (stack trace) — например, при падении программы или при работе санитайзера.
