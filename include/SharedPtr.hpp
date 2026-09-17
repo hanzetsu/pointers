@@ -1,63 +1,81 @@
+#pragma once
 #include <cstddef>
 #include <type_traits>
 #include "Exceptions.hpp"
+
+template <typename T> class SharedPtr;
+template <typename T> class WeakPtr;
+
+template <typename T>
+struct ControlBlock
+{
+    T *ptr;
+    size_t shared_count;
+    size_t weak_count;
+
+    ControlBlock(T *p) : ptr(p), shared_count(1), weak_count(0) {}
+};
 
 template <typename T>
 class SharedPtr
 {
 private:
     T *ptr;
-    size_t *ref_count;
+    ControlBlock<T> *cb;
 
-    template <typename U>
-    friend class SharedPtr;
+    template <typename U> friend class SharedPtr;
+    template <typename U> friend class WeakPtr;
 
     void release() noexcept
     {
-        if (ref_count != nullptr && --(*ref_count) == 0)
+        if (cb == nullptr)
+            return;
+        if (--cb->shared_count == 0)
         {
-            delete ptr;
-            delete ref_count;
+            delete cb->ptr;
+            cb->ptr = nullptr;
+            if (cb->weak_count == 0)
+                delete cb;
         }
         ptr = nullptr;
-        ref_count = nullptr;
+        cb = nullptr;
     }
 
 public:
-    SharedPtr(T *p = nullptr) : ptr(p), ref_count(nullptr)
+    SharedPtr(T *p = nullptr) : ptr(p), cb(nullptr)
     {
         if (p != nullptr)
-            ref_count = new size_t(1);
+            cb = new ControlBlock<T>(p);
     }
 
     SharedPtr(const SharedPtr &other)
-        : ptr(other.ptr), ref_count(other.ref_count)
+        : ptr(other.ptr), cb(other.cb)
     {
-        if (ref_count != nullptr)
-            ++(*ref_count);
+        if (cb != nullptr)
+            ++cb->shared_count;
     }
 
     SharedPtr(SharedPtr &&other) noexcept
-        : ptr(other.ptr), ref_count(other.ref_count)
+        : ptr(other.ptr), cb(other.cb)
     {
         other.ptr = nullptr;
-        other.ref_count = nullptr;
+        other.cb = nullptr;
     }
 
     template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
     SharedPtr(const SharedPtr<U> &other)
-        : ptr(other.ptr), ref_count(other.ref_count)
+        : ptr(other.ptr), cb(other.cb)
     {
-        if (ref_count != nullptr)
-            ++(*ref_count);
+        if (cb != nullptr)
+            ++cb->shared_count;
     }
 
     template <typename U, typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
     SharedPtr(SharedPtr<U> &&other) noexcept
-        : ptr(other.ptr), ref_count(other.ref_count)
+        : ptr(other.ptr), cb(other.cb)
     {
         other.ptr = nullptr;
-        other.ref_count = nullptr;
+        other.cb = nullptr;
     }
 
     SharedPtr &operator=(const SharedPtr &other)
@@ -66,9 +84,9 @@ public:
         {
             release();
             ptr = other.ptr;
-            ref_count = other.ref_count;
-            if (ref_count != nullptr)
-                ++(*ref_count);
+            cb = other.cb;
+            if (cb != nullptr)
+                ++cb->shared_count;
         }
         return *this;
     }
@@ -79,9 +97,9 @@ public:
         {
             release();
             ptr = other.ptr;
-            ref_count = other.ref_count;
+            cb = other.cb;
             other.ptr = nullptr;
-            other.ref_count = nullptr;
+            other.cb = nullptr;
         }
         return *this;
     }
@@ -93,9 +111,9 @@ public:
         {
             release();
             ptr = other.ptr;
-            ref_count = other.ref_count;
-            if (ref_count != nullptr)
-                ++(*ref_count);
+            cb = other.cb;
+            if (cb != nullptr)
+                ++cb->shared_count;
         }
         return *this;
     }
@@ -107,9 +125,9 @@ public:
         {
             release();
             ptr = other.ptr;
-            ref_count = other.ref_count;
+            cb = other.cb;
             other.ptr = nullptr;
-            other.ref_count = nullptr;
+            other.cb = nullptr;
         }
         return *this;
     }
@@ -125,7 +143,7 @@ public:
 
     size_t getCountRef() const noexcept
     {
-        return ref_count != nullptr ? *ref_count : 0;
+        return cb != nullptr ? cb->shared_count : 0;
     }
 
     void reset(T *p = nullptr)
@@ -135,7 +153,7 @@ public:
             release();
             ptr = p;
             if (p != nullptr)
-                ref_count = new size_t(1);
+                cb = new ControlBlock<T>(p);
         }
     }
 };

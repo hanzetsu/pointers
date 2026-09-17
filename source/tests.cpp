@@ -5,6 +5,8 @@
 #include "UniquePtr.hpp"
 #include "SharedPtr.hpp"
 #include "Exceptions.hpp"
+#include "WeakPtr.hpp"
+#include <string>
 
 struct Tracked
 {
@@ -15,15 +17,14 @@ struct Tracked
 };
 int Tracked::alive = 0;
 
-#define CHECK(cond, msg)                                                                    \
-    do                                                                                      \
-    {                                                                                       \
-        if (!(cond))                                                                        \
-        {                                                                                   \
-            std::cerr << "Провал: " << msg << " (" << __FILE__ << ":" << __LINE__ << ")\n"; \
-            return false;                                                                   \
-        }                                                                                   \
-    } while (0)
+inline bool CHECK(bool cond, std::string msg) {                                                                                                                                                 \
+        if (!(cond))                                                                        
+        {                                                                                   
+            std::cerr << "Провал: " << msg << " (" << __FILE__ << ":" << __LINE__ << ")\n"; 
+            return false;                                                                   
+        }
+        return true;                                                                                   
+    }
 
 bool test_shared_basic()
 {
@@ -212,7 +213,61 @@ bool test_unique_array()
     CHECK(Tracked::alive == 0, "UniquePtrArr: все объекты удалены");
     return true;
 }
+bool test_weak_basic()
+{
+    Tracked::alive = 0;
+    {
+        SharedPtr<Tracked> sp(new Tracked(42));
+        WeakPtr<Tracked> wp = sp;
 
+        CHECK(Tracked::alive == 1, "WeakPtr: объект создан");
+        CHECK(sp.getCountRef() == 1, "WeakPtr: shared_count = 1");
+        CHECK(wp.getCountWeak() == 1, "WeakPtr: weak_count = 1");
+        CHECK(!wp.expired(), "WeakPtr: не expired");
+
+        SharedPtr<Tracked> locked = wp.lock();
+        CHECK(locked.get() == sp.get(), "WeakPtr lock: тот же объект");
+        CHECK(sp.getCountRef() == 2, "WeakPtr lock: shared_count = 2");
+    }
+    CHECK(Tracked::alive == 0, "WeakPtr: объект удалён");
+    return true;
+}
+
+bool test_weak_expired()
+{
+    Tracked::alive = 0;
+    WeakPtr<Tracked> wp;
+    {
+        SharedPtr<Tracked> sp(new Tracked(7));
+        wp = sp;
+        CHECK(!wp.expired(), "WeakPtr expired: не expired пока sp жив");
+        CHECK(wp.lock().get() != nullptr, "WeakPtr expired: lock успешен");
+    }
+    CHECK(Tracked::alive == 0, "WeakPtr expired: объект удалён");
+    CHECK(wp.expired(), "WeakPtr expired: expired после смерти sp");
+    CHECK(wp.lock().get() == nullptr, "WeakPtr expired: lock вернул пустой");
+    return true;
+}
+
+bool test_weak_copy()
+{
+    Tracked::alive = 0;
+    {
+        SharedPtr<Tracked> sp(new Tracked(1));
+        WeakPtr<Tracked> wp1 = sp;
+        WeakPtr<Tracked> wp2 = wp1;
+        WeakPtr<Tracked> wp3;
+        wp3 = wp2;
+
+        CHECK(wp1.getCountWeak() == 3, "WeakPtr copy: weak_count = 3");
+        CHECK(sp.getCountRef() == 1, "WeakPtr copy: shared_count = 1");
+
+        SharedPtr<Tracked> locked = wp3.lock();
+        CHECK(sp.getCountRef() == 2, "WeakPtr copy lock: shared_count = 2");
+    }
+    CHECK(Tracked::alive == 0, "WeakPtr copy: объект удалён");
+    return true;
+}
 int main()
 {
     size_t failed = 0;
@@ -238,6 +293,9 @@ int main()
     run(test_unique_release_reset, "UniquePtr release/reset");
     run(test_shared_array, "SharedPtrArr");
     run(test_unique_array, "UniquePtrArr");
+    run(test_weak_basic, "WeakPtr basic");
+    run(test_weak_copy, "WeakPtr copy");
+    run(test_weak_expired, "WeakPtr expired");
     if (failed == 0)
     {
         std::cout << "\nВсе тесты пройдены успешно.\n";
