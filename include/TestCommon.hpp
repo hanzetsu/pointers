@@ -17,7 +17,25 @@ struct Tracked
     ~Tracked() { --alive; }
 };
 
-struct TestFailure { std::string msg; };
+struct Base
+{
+    inline static int alive = 0;
+    int base_value = 1;
+    Base() { ++alive; }
+    virtual ~Base() { --alive; }
+};
+
+struct Derived : Base
+{
+    int derived_value = 2;
+    Derived() { ++alive; }
+    ~Derived() override { --alive; }
+};
+
+struct TestFailure
+{
+    std::string msg;
+};
 
 inline void CHECK(bool cond, std::string msg,
                   const char *file = __builtin_FILE(),

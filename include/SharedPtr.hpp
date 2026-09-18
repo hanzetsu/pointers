@@ -3,28 +3,39 @@
 #include <type_traits>
 #include "Exceptions.hpp"
 
-template <typename T> class SharedPtr;
-template <typename T> class WeakPtr;
-
 template <typename T>
+class SharedPtr;
+template <typename T>
+class WeakPtr;
+
 struct ControlBlock
 {
-    T *ptr;
+    void *ptr;
     size_t shared_count;
     size_t weak_count;
+    void (*deleter)(void *);
 
-    ControlBlock(T *p) : ptr(p), shared_count(1), weak_count(0) {}
+    ControlBlock(void *p, void (*d)(void *))
+        : ptr(p), shared_count(1), weak_count(0), deleter(d) {}
 };
+
+template <typename T>
+void default_deleter(void *p)
+{
+    delete static_cast<T *>(p);
+}
 
 template <typename T>
 class SharedPtr
 {
 private:
     T *ptr;
-    ControlBlock<T> *cb;
+    ControlBlock *cb;
 
-    template <typename U> friend class SharedPtr;
-    template <typename U> friend class WeakPtr;
+    template <typename U>
+    friend class SharedPtr;
+    template <typename U>
+    friend class WeakPtr;
 
     void release() noexcept
     {
@@ -32,7 +43,7 @@ private:
             return;
         if (--cb->shared_count == 0)
         {
-            delete cb->ptr;
+            cb->deleter(cb->ptr);
             cb->ptr = nullptr;
             if (cb->weak_count == 0)
                 delete cb;
@@ -45,7 +56,7 @@ public:
     SharedPtr(T *p = nullptr) : ptr(p), cb(nullptr)
     {
         if (p != nullptr)
-            cb = new ControlBlock<T>(p);
+            cb = new ControlBlock(p, &default_deleter<T>);
     }
 
     SharedPtr(const SharedPtr &other)
@@ -153,7 +164,7 @@ public:
             release();
             ptr = p;
             if (p != nullptr)
-                cb = new ControlBlock<T>(p);
+                cb = new ControlBlock(p, &default_deleter<T>);
         }
     }
 };

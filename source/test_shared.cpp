@@ -114,7 +114,48 @@ bool test_shared_array()
     CHECK(Tracked::alive == 0, "SharedPtrArr: все объекты удалены");
     return true;
 }
+bool test_shared_subtyping()
+{
+    Base::alive = 0;
+    {
+        SharedPtr<Derived> d(new Derived);
+        CHECK(d->base_value == 1, "Derived: base_value");
+        CHECK(d->derived_value == 2, "Derived: derived_value");
+        CHECK(d.getCountRef() == 1, "Derived: shared_count = 1");
 
+        SharedPtr<Base> b = d;
+        CHECK(d.getCountRef() == 2, "copy: shared_count = 2");
+        CHECK(b.getCountRef() == 2, "copy: shared_count = 2");
+        CHECK(b.get() == d.get(), "copy: тот же объект");
+        CHECK(b->base_value == 1, "copy: доступ к base_value");
+
+        b->base_value = 100;
+        CHECK(d->base_value == 100, "copy: изменения видны через оба указателя");
+    }
+    CHECK(Base::alive == 0, "copy: объект удалён");
+
+    Base::alive = 0;
+    {
+        SharedPtr<Derived> d(new Derived);
+        SharedPtr<Base> b;
+        b = d;
+        CHECK(d.getCountRef() == 2, "assign: shared_count = 2");
+        CHECK(b.get() == d.get(), "assign: тот же объект");
+    }
+    CHECK(Base::alive == 0, "assign: объект удалён");
+
+    Base::alive = 0;
+    {
+        SharedPtr<Derived> d(new Derived);
+        SharedPtr<Base> b = std::move(d);
+        CHECK(d.get() == nullptr, "move: источник пуст");
+        CHECK(b.get() != nullptr, "move: цель владеет объектом");
+        CHECK(b->base_value == 1, "move: доступ к base_value");
+    }
+    CHECK(Base::alive == 0, "move: объект удалён");
+
+    return true;
+}
 int main()
 {
     size_t failed = 0;
@@ -138,7 +179,7 @@ int main()
     run(test_shared_move, "SharedPtr move");
     run(test_shared_reset, "SharedPtr reset");
     run(test_shared_array, "SharedPtrArr");
-
+    run(test_shared_subtyping, "SharedPtr subtyping");
     if (failed == 0)
     {
         std::cout << "\nВсе тесты SharedPtr пройдены успешно.\n";

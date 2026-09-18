@@ -8,10 +8,12 @@ class WeakPtr
 {
 private:
     T *ptr;
-    ControlBlock<T> *cb;
+    ControlBlock *cb;
 
-    template <typename U> friend class WeakPtr;
-    template <typename U> friend class SharedPtr;
+    template <typename U>
+    friend class WeakPtr;
+    template <typename U>
+    friend class SharedPtr;
 
     void release() noexcept
     {
@@ -139,7 +141,7 @@ public:
         if (expired())
             return SharedPtr<T>();
         SharedPtr<T> sp;
-        sp.ptr = cb->ptr;
+        sp.ptr = static_cast<T *>(cb->ptr);
         sp.cb = cb;
         ++cb->shared_count;
         return sp;

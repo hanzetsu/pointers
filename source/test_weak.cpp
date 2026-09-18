@@ -55,7 +55,39 @@ bool test_weak_copy()
     CHECK(Tracked::alive == 0, "WeakPtr copy: объект удалён");
     return true;
 }
+bool test_weak_subtyping()
+{
+    Base::alive = 0;
+    {
+        SharedPtr<Derived> d(new Derived);
+        WeakPtr<Base> wb = d;
+        CHECK(d.getCountRef() == 1, "WeakPtr subtyping: shared_count = 1");
+        CHECK(wb.getCountWeak() == 1, "WeakPtr subtyping: weak_count = 1");
+        CHECK(!wb.expired(), "WeakPtr subtyping: не expired");
 
+        SharedPtr<Base> locked = wb.lock();
+        CHECK(locked.get() == d.get(), "WeakPtr subtyping lock: тот же объект");
+        CHECK(locked->base_value == 1, "WeakPtr subtyping lock: base_value");
+        CHECK(d.getCountRef() == 2, "WeakPtr subtyping lock: shared_count = 2");
+    }
+    CHECK(Base::alive == 0, "WeakPtr subtyping: объект удалён");
+
+    Base::alive = 0;
+    {
+        SharedPtr<Derived> d(new Derived);
+        WeakPtr<Derived> wd = d;
+        WeakPtr<Base> wb;
+        wb = wd;
+        CHECK(wd.getCountWeak() == 2, "WeakPtr subtyping assign: weak_count = 2");
+        CHECK(wb.expired() == false, "WeakPtr subtyping assign: не expired");
+
+        d.reset();
+        CHECK(wd.expired(), "WeakPtr subtyping assign: expired после reset");
+        CHECK(wb.expired(), "WeakPtr subtyping assign: expired после reset");
+    }
+
+    return true;
+}
 int main()
 {
     size_t failed = 0;
@@ -77,7 +109,7 @@ int main()
     run(test_weak_basic, "WeakPtr basic");
     run(test_weak_expired, "WeakPtr expired");
     run(test_weak_copy, "WeakPtr copy");
-
+    run(test_weak_subtyping, "WeakPtr subtyping");
     if (failed == 0)
     {
         std::cout << "\nВсе тесты WeakPtr пройдены успешно.\n";
@@ -87,4 +119,4 @@ int main()
     return 1;
 }
 
-//g++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude source/test_weak.cpp   -o build/test_weak_san
+// g++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude source/test_weak.cpp   -o build/test_weak_san
