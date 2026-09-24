@@ -20,7 +20,7 @@ private:
 public:
     UniquePtr(T *p = nullptr) noexcept : ptr(p) {}
 
-    ~UniquePtr() { destroy(); }
+    ~UniquePtr() { delete ptr; ptr = nullptr; }
 
     UniquePtr(const UniquePtr &) = delete;
     UniquePtr &operator=(const UniquePtr &) = delete;
